@@ -1,10 +1,14 @@
-package src;
 /*
  * STDISCM P2 - Looking for Group Synchronization
  * By: Jaeme Rebano S14
  */
+package src;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class App {
     /*
@@ -130,6 +134,27 @@ public class App {
         return inputs;
     }
 
+    public static Map<Integer, Dungeon> createDungeonInstances(int n) {
+        Map<Integer, Dungeon> dungeonMap = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            dungeonMap.put(i + 1, new Dungeon(i + 1));
+        }
+        return dungeonMap;
+    }
+
+    public static Queue<Integer> createDungeonQueue(int n) {
+        Queue<Integer> availableDungeons = new ConcurrentLinkedQueue<>();
+        for (int i = 0; i < n; i++) {
+            availableDungeons.offer(i + 1);
+        }
+        return availableDungeons;
+    }
+
+    public static int getNumOfParties(int t, int h, int d) {
+        int dps = d / 3;
+        return Math.min(t, Math.min(h, dps));
+    }
+
     public static void main(String[] args) {
         printHeader();
         int[] inputs = getInputs();
@@ -144,6 +169,53 @@ public class App {
             int t2 = inputs[5]; // max time before instance finished
             
             printConfiguration(n, t, h, d, t1, t2);
+
+            // Different Parties finding a dungeon
+            int numParties = getNumOfParties(t, h, d);
+            int leftOverTanks = t - numParties;
+            int leftOverHealers = h - numParties;
+            int leftOverDPS = d - (numParties * 3);
+            
+            DungeonManager manager = DungeonManager.getInstance(n);
+            ExecutorService executor = Executors.newFixedThreadPool(numParties);
+
+            
+            for (int i = 1; i <= numParties; i++) {
+                executor.execute(new Party(i, t1, t2)); // Shared manager
+            }
+            
+            executor.shutdown(); // No more tasks can be submitted
+            try {
+                if (!executor.awaitTermination(10, TimeUnit.SECONDS)) { // Wait up to 10 seconds
+                    executor.shutdownNow(); // Force shutdown if tasks are still running
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+            
+            System.out.println("Left Over Players:");
+            System.out.println(leftOverTanks);
+            System.out.println(leftOverHealers);
+            System.out.println(leftOverDPS);
+
+            // One Manager
+            /*
+            
+            // Map<Integer, Dungeon> dungeons = createDungeonInstances(n);
+            //Queue<Integer> availableDungeons = createDungeonQueue(n);
+
+            
+            while (true) { // set end statement
+                int nextId = availableDungeons.poll();
+                Dungeon nextDungeon = dungeons.get(nextId);
+                int time = (int) (Math.random() * (t2 - t1 + 1)) + t1;
+
+                nextDungeon
+
+            }
+            */
+            
         }
     }
 }
