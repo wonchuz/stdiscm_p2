@@ -6,13 +6,16 @@ package src;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class DungeonManager {
     private static DungeonManager instance;
     private final ConcurrentLinkedQueue<Integer> availableDungeons;
-    private final ConcurrentLinkedQueue<Integer> waitingParties = new ConcurrentLinkedQueue<>();;
     private final Map<Integer, Dungeon> dungeons;
     private static int numOfDungeons;
+
+    private final Lock lock = new ReentrantLock(); // Explicit lock
 
     private DungeonManager(int n) {
         this.availableDungeons = new ConcurrentLinkedQueue<>();
@@ -47,22 +50,20 @@ public class DungeonManager {
     }
     
     public synchronized int getAvailableDungeon(int partyId) {
-        System.out.println("[DG_ENTER] Party" + partyId + " entered getAvailableDungeon");
-        this.waitingParties.offer(partyId); // add to waitingThreads List
-        System.out.println("CURRENT WAITING PARTIES: " + this.waitingParties);
-
-        while (!(partyId == waitingParties.peek() && !availableDungeons.isEmpty())) {
+        System.out.println("[DG_TRY] Party" + partyId + " enters getAvailableDungeon and tries to acquire semaphore");
+        
+        // Wait until a dungeon is available
+        if (this.availableDungeons.isEmpty()) { 
+            System.out.println("[DG_WAIT] Party" + partyId + " is waiting");
+            System.out.println("[AVAIL DUNGEONS] " + availableDungeons);
             try {
-                //System.out.println("[DG_WAIT] Party" + partyId + " waiting getAvailableDungeon");
-                wait();
+                wait();  // Wait until notified by another thread
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                Thread.currentThread().interrupt(); // Restore interrupt status
             }
         }
-        this.waitingParties.poll();
         int dungeonId = this.availableDungeons.poll();
         System.out.println("[DG_GOT] Party" + partyId + " exits getAvailableDungeon and got dungeon " + dungeonId);
-        System.out.println("CURRENT WAITING PARTIES: " + this.waitingParties);
         return dungeonId;
     }
 
@@ -71,9 +72,14 @@ public class DungeonManager {
     }
 
     public synchronized void releaseDungeon(int dungeonId) {
-        availableDungeons.offer(dungeonId);
-        notifyAll(); // Wake up waiting parties
-    }    
+        System.out.println("[PARTY_EXIT] Party will release dungeon " + dungeonId);
+        this.availableDungeons.offer(dungeonId);
+    
+        // Notify one of the waiting threads (if any) that a dungeon is available
+        notify();  // Or use notifyAll() if you want to wake up all waiting threads
+    
+        System.out.println("[PARTY_EXIT] Party releasedDungeon " + dungeonId);
+    }
 
     public void printAvailableDungeons() {
         System.out.println("AVAILABLE DUNGEONS: " + this.availableDungeons);

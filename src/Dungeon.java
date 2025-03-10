@@ -15,6 +15,7 @@ public class Dungeon {
     }
 
     public synchronized void startInstance(int time) {
+        System.out.println("Starting Dungeon Instance");
         this.isActive = true;
         this.partiesServed++;
     
@@ -26,6 +27,8 @@ public class Dungeon {
     
         this.totalTimeServed += time;
         this.isActive = false;
+        
+        System.out.println("ENDING Dungeon Instance");
     }
     
 

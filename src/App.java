@@ -5,7 +5,6 @@
 package src;
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -16,7 +15,7 @@ public class App {
      */
     public static void printHeader() {
         System.out.println("------------------------------------------------\n");
-        System.out.println("STDISCM P1 - Threaded Prime Number Search\nBy: Jaeme Rebano S14\n");
+        System.out.println("STDISCM P2 - Looking for Group Synchronization\nBy: Jaeme Rebano S14\n");
         System.out.println("------------------------------------------------");
     }
 
@@ -134,25 +133,8 @@ public class App {
         return inputs;
     }
 
-    public static Map<Integer, Dungeon> createDungeonInstances(int n) {
-        Map<Integer, Dungeon> dungeonMap = new HashMap<>();
-        for (int i = 0; i < n; i++) {
-            dungeonMap.put(i + 1, new Dungeon(i + 1));
-        }
-        return dungeonMap;
-    }
-
-    public static Queue<Integer> createDungeonQueue(int n) {
-        Queue<Integer> availableDungeons = new ConcurrentLinkedQueue<>();
-        for (int i = 0; i < n; i++) {
-            availableDungeons.offer(i + 1);
-        }
-        return availableDungeons;
-    }
-
-    public static int getNumOfParties(int t, int h, int d) {
-        int dps = d / 3;
-        return Math.min(t, Math.min(h, dps));
+    public static boolean canCreateGroup(int t, int h, int d) {
+        return t > 0 && h > 0 && d >= 3;
     }
 
     public static void main(String[] args) {
@@ -162,31 +144,33 @@ public class App {
         // Check the inputs are valid
         if (inputs != null) {
             int n = inputs[0]; // Max concurrent instances
-            int t = inputs[1]; // Tanks
-            int h = inputs[2]; // Healers
-            int d = inputs[3]; // DPS
+            int tankPlayers = inputs[1]; // Tanks
+            int healerPlayers = inputs[2]; // Healers
+            int dpsPlayers = inputs[3]; // DPS
             int t1 = inputs[4]; // min time before instance finished
             int t2 = inputs[5]; // max time before instance finished
             
-            printConfiguration(n, t, h, d, t1, t2);
-
-            // Different Parties finding a dungeon
-            int numParties = getNumOfParties(t, h, d);
-            int leftOverTanks = t - numParties;
-            int leftOverHealers = h - numParties;
-            int leftOverDPS = d - (numParties * 3);
+            printConfiguration(n, tankPlayers, healerPlayers, dpsPlayers, t1, t2);
             
             DungeonManager manager = DungeonManager.getInstance(n);
-            ExecutorService executor = Executors.newFixedThreadPool(numParties);
+            ExecutorService executor = Executors.newFixedThreadPool(5);
 
-            
-            for (int i = 1; i <= numParties; i++) {
-                executor.execute(new Party(i, t1, t2)); // Shared manager
+            int partiesCreated = 0;
+            // Queue Players into Group
+            while (canCreateGroup(tankPlayers, healerPlayers, dpsPlayers)) {
+                // A party needs: 1 Tank, 1 Healer, 3 DPS
+                tankPlayers--;
+                healerPlayers--;
+                dpsPlayers -= 3;
+                partiesCreated++;
+                // Create a Party
+                executor.execute(new Party(partiesCreated, t1, t2));
             }
             
             executor.shutdown(); // No more tasks can be submitted
+            
             try {
-                if (!executor.awaitTermination(10, TimeUnit.SECONDS)) { // Wait up to 10 seconds
+                if (!executor.awaitTermination(30, TimeUnit.SECONDS)) { // Wait up to 10 seconds
                     executor.shutdownNow(); // Force shutdown if tasks are still running
                 }
             } catch (InterruptedException e) {
@@ -194,28 +178,13 @@ public class App {
                 Thread.currentThread().interrupt();
             }
             
+            
+            // Print outputs
             System.out.println("Left Over Players:");
-            System.out.println(leftOverTanks);
-            System.out.println(leftOverHealers);
-            System.out.println(leftOverDPS);
+            System.out.println("Tanks: " + tankPlayers);
+            System.out.println("Healers: " + healerPlayers);
+            System.out.println("DPS: " + dpsPlayers);
 
-            // One Manager
-            /*
-            
-            // Map<Integer, Dungeon> dungeons = createDungeonInstances(n);
-            //Queue<Integer> availableDungeons = createDungeonQueue(n);
-
-            
-            while (true) { // set end statement
-                int nextId = availableDungeons.poll();
-                Dungeon nextDungeon = dungeons.get(nextId);
-                int time = (int) (Math.random() * (t2 - t1 + 1)) + t1;
-
-                nextDungeon
-
-            }
-            */
-            
         }
     }
 }
