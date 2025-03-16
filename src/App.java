@@ -5,9 +5,6 @@
 package src;
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class App {
     /*
@@ -133,10 +130,11 @@ public class App {
         return inputs;
     }
 
-    public static boolean canCreateGroup(int t, int h, int d) {
-        return t > 0 && h > 0 && d >= 3;
+    public static int getNumOfParties(int t, int h, int d) {
+        int dps = d / 3;
+        return Math.min(t, Math.min(h, dps));
     }
-
+    
     public static void main(String[] args) {
         printHeader();
         int[] inputs = getInputs();
@@ -151,40 +149,42 @@ public class App {
             int t2 = inputs[5]; // max time before instance finished
             
             printConfiguration(n, tankPlayers, healerPlayers, dpsPlayers, t1, t2);
+
+            int numParties = getNumOfParties(tankPlayers, healerPlayers, dpsPlayers);
+            int numPartiesLeft = numParties;
             
             DungeonManager manager = DungeonManager.getInstance(n);
-            ExecutorService executor = Executors.newFixedThreadPool(5);
-
-            int partiesCreated = 0;
-            // Queue Players into Group
-            while (canCreateGroup(tankPlayers, healerPlayers, dpsPlayers)) {
-                // A party needs: 1 Tank, 1 Healer, 3 DPS
-                tankPlayers--;
-                healerPlayers--;
-                dpsPlayers -= 3;
-                partiesCreated++;
-                // Create a Party
-                executor.execute(new Party(partiesCreated, t1, t2));
+            // Start dungeon instances
+            for (int i = 1; i <= n; i++) {
+                manager.startDungeonInstance(i, t1, t2);
             }
-            
-            executor.shutdown(); // No more tasks can be submitted
-            
-            try {
-                if (!executor.awaitTermination(30, TimeUnit.SECONDS)) { // Wait up to 10 seconds
-                    executor.shutdownNow(); // Force shutdown if tasks are still running
+
+            manager.printAvailableDungeons();
+            while (numPartiesLeft > 0) {
+                // keep waiting while available dungeon queue is not empty
+                Integer dungeonId = null;
+                boolean exit = false;
+                while (!exit) {
+                    // Loop continues while dungeonId is null
+                    dungeonId = manager.getAvailableDungeon();
+                    // System.out.println(dungeonId);
+                    if (dungeonId != null) {
+                        exit = true;
+                    }
                 }
-            } catch (InterruptedException e) {
-                executor.shutdownNow();
-                Thread.currentThread().interrupt();
+                
+                // Make sure its not null
+                if (dungeonId != null) {
+                    Dungeon dungeon = manager.getDungeon(dungeonId);
+                    
+                    // System.out.println("Start pARTY");
+                    dungeon.startParty();
+                    manager.printStatus();
+                    numPartiesLeft--;
+                }
             }
-            
-            
-            // Print outputs
-            System.out.println("Left Over Players:");
-            System.out.println("Tanks: " + tankPlayers);
-            System.out.println("Healers: " + healerPlayers);
-            System.out.println("DPS: " + dpsPlayers);
-
+            manager.shutdown();
+            manager.printSummary();
         }
     }
 }

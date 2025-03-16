@@ -4,6 +4,8 @@
  */
 package src;
 
+import java.util.Random;
+
 public class Dungeon {
     private final int id;
     private boolean isActive = false;
@@ -12,28 +14,56 @@ public class Dungeon {
 
     public Dungeon(int id) {
         this.id = id;
+        
     }
 
-    public synchronized void startInstance(int time) {
-        System.out.println("Starting Dungeon Instance");
-        this.isActive = true;
-        this.partiesServed++;
-    
-        try {
-            Thread.sleep(time * 1000); // Convert seconds to milliseconds
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+    public void startInstance(int t1, int t2) {
+        DungeonManager manager = DungeonManager.getInstance();
+        boolean enter = false;
+        while (manager.getStatus()) {
+            // if there is a party, execute
+            synchronized (this) {
+                if (this.isActive) {
+                    enter = true;
+                }
+            }
+            if (enter) {
+                manager.printStatus();
+                // System.out.println("[ENTERED] Dungeon " + this.id);
+                int time = new Random().nextInt(t2 - t1 + 1) + t1;
+
+                // run time
+                try {
+                    // System.out.println("[SLEEP] Dungeon " + this.id + "for " + time + " seconds");
+                    Thread.sleep(time * 1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    System.out.println("Dungeon " + id + " interrupted.");
+                    return;
+                }
+                synchronized (this) {
+                    // remove party from dungeon
+                    this.isActive = false;
+                    enter = false;
+                    this.partiesServed++;
+                    this.totalTimeServed += time;
+                    manager.releaseDungeon(this.id);
+                    manager.printStatus();
+                }
+                // System.out.println("[EXIT] Dungeon " + this.id);
+            } else {
+                // System.out.println("[WAIT] Dungeon " + this.id);
+            }
+            // no party, keep waiting
         }
-    
-        this.totalTimeServed += time;
-        this.isActive = false;
-        
-        System.out.println("ENDING Dungeon Instance");
     }
-    
 
     public int getId() {
         return this.id;
+    }
+
+    public synchronized void startParty() {
+        this.isActive = true;
     }
 
     public synchronized boolean isActive() {
