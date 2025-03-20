@@ -28,7 +28,7 @@ public class Dungeon {
                 }
             }
             if (enter) {
-                manager.printStatus();
+                // manager.printStatus();
                 // System.out.println("[ENTERED] Dungeon " + this.id);
                 int time = new Random().nextInt(t2 - t1 + 1) + t1;
 
@@ -48,7 +48,7 @@ public class Dungeon {
                     this.partiesServed++;
                     this.totalTimeServed += time;
                     manager.releaseDungeon(this.id);
-                    manager.printStatus();
+                    // manager.printStatus();
                 }
                 // System.out.println("[EXIT] Dungeon " + this.id);
             } else {

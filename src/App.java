@@ -3,6 +3,7 @@
  * By: Jaeme Rebano S14
  */
 package src;
+
 import java.io.*;
 import java.util.*;
 
@@ -62,22 +63,22 @@ public class App {
      */
     public static boolean validateInputs(int[] inputs) {
         boolean isValid = true;
-        String[] varNames = {"n", "t", "h", "d", "t1", "t2"};
+        String[] varNames = { "n", "t", "h", "d", "t1", "t2" };
         // Must not be negative
         for (int i = 0; i < inputs.length; i++) {
             if (checkIfNegative(inputs[i], varNames[i])) {
                 isValid = false;
             }
-            
+
             if ("t".equals(varNames[i]) || "h".equals(varNames[i]) || "d".equals(varNames[i])) {
                 continue;
             }
-            // n, t1, t2 must not be zero    
+            // n, t1, t2 must not be zero
             if (checkIfZero(inputs[i], varNames[i])) {
                 isValid = false;
-            }    
+            }
         }
-       
+
         // t2 should not be less than t1 or greater than 15
         if (inputs[5] < inputs[4] || inputs[5] > 15) {
             System.err.println("Invalid value for t2: " + inputs[5] + " (must be >= t1 and <= 15)");
@@ -91,22 +92,22 @@ public class App {
      */
     public static int[] getInputs() {
         int[] inputs = new int[6];
-    
+
         try (Scanner sc = new Scanner(new File("config.txt"))) {
             for (int i = 0; i < inputs.length; i++) {
                 if (!sc.hasNextLine()) {
                     System.err.println("Missing config values. Expected 6 lines.");
                     return null;
                 }
-    
+
                 String line = sc.nextLine();
                 String[] parts = line.split("=", 2);
-    
+
                 if (parts.length != 2) {
                     System.err.println("Invalid format in config file: " + line);
                     return null;
                 }
-    
+
                 try {
                     inputs[i] = Integer.parseInt(parts[1].trim());
                 } catch (NumberFormatException e) {
@@ -121,12 +122,12 @@ public class App {
             System.err.println("Error reading config file: " + e.getMessage());
             return null;
         }
-    
+
         // Validate inputs
         if (!validateInputs(inputs)) {
             return null;
         }
-    
+
         return inputs;
     }
 
@@ -134,7 +135,7 @@ public class App {
         int dps = d / 3;
         return Math.min(t, Math.min(h, dps));
     }
-    
+
     public static void main(String[] args) {
         printHeader();
         int[] inputs = getInputs();
@@ -147,12 +148,12 @@ public class App {
             int dpsPlayers = inputs[3]; // DPS
             int t1 = inputs[4]; // min time before instance finished
             int t2 = inputs[5]; // max time before instance finished
-            
+
             printConfiguration(n, tankPlayers, healerPlayers, dpsPlayers, t1, t2);
 
             int numParties = getNumOfParties(tankPlayers, healerPlayers, dpsPlayers);
             int numPartiesLeft = numParties;
-            
+
             DungeonManager manager = DungeonManager.getInstance(n);
             // Start dungeon instances
             for (int i = 1; i <= n; i++) {
@@ -172,19 +173,24 @@ public class App {
                         exit = true;
                     }
                 }
-                
+
                 // Make sure its not null
                 if (dungeonId != null) {
                     Dungeon dungeon = manager.getDungeon(dungeonId);
-                    
+
                     // System.out.println("Start pARTY");
                     dungeon.startParty();
-                    manager.printStatus();
+                    // manager.printStatus();
                     numPartiesLeft--;
                 }
             }
             manager.shutdown();
             manager.printSummary();
+
+            System.out.println("\nLeftover Players:");
+            System.out.println(tankPlayers - numParties + " Tanks");
+            System.out.println(healerPlayers - numParties + " Healers");
+            System.out.println(dpsPlayers - (numParties * 3) + " DPS");
         }
     }
 }

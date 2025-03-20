@@ -91,21 +91,26 @@ public class DungeonManager {
         System.out.println("Current status of all available instances:");
         for (int i = 1; i <= this.numOfDungeons; i++) {
             Dungeon dungeon = dungeons.get(i);
-            boolean isActive = dungeon.isActive();
-            String status = "empty";
-            if (isActive) {
-                status = "active";
+            synchronized (dungeon) {
+                boolean isActive = dungeon.isActive();
+                String status = "empty";
+                if (isActive) {
+                    status = "active";
+                }
+                System.out.println("Dungeon " + i + " = " + status);
             }
-            System.out.println("Dungeon " + i + " = " + status);
         }
     }
 
     public void printSummary() {
-        System.out.println("Dungeon summary:");
+        int partiesServed = 0;
+        System.out.println("Dungeon Instance Summary:");
         for (int i = 1; i <= this.numOfDungeons; i++) {
             Dungeon dungeon = dungeons.get(i);
-            System.out.println("Dungeon " + i + " = " + dungeon.getPartiesServed() + " parties and " + dungeon.getTotalTimeServed() + " seconds");
+            System.out.println("Dungeon " + i + " served " + dungeon.getPartiesServed() + " parties and total time is " + dungeon.getTotalTimeServed() + " seconds");
+            partiesServed += dungeon.getPartiesServed();
         }
+        System.out.println("Number of parties: " + partiesServed);
     }
 
     public synchronized boolean getStatus() {
