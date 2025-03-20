@@ -6,6 +6,7 @@ package src;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -17,8 +18,12 @@ public class DungeonManager {
     private final int numOfDungeons;
     private final ExecutorService executor;
     private boolean partiesLeft = true;
+    private final CountDownLatch latch;
+    private final Object statusLock = new Object();   // Separate lock for dungeons
+    private final Object latchLock = new Object();     // Separate lock for latch operations
 
-    private DungeonManager(int n) {
+
+    private DungeonManager(int n, int numParties) {
         this.availableDungeons = new ConcurrentLinkedQueue<>();
         this.numOfDungeons = n;
 
@@ -30,18 +35,29 @@ public class DungeonManager {
         }
     
         this.executor = Executors.newFixedThreadPool(n);
+        this.latch = new CountDownLatch(numParties);
     }
 
     public void shutdown() {
         this.partiesLeft = false;
-        this.executor.shutdown();
 
         try {
-            while (!executor.awaitTermination(1, TimeUnit.SECONDS)) {
-            }
+            System.out.println("Waiting for all dungeon parties to finish...");
+            latch.await();  // Wait until all parties finish
+            System.out.println("All parties cleared dungeons. Shutting down.");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             System.out.println("Shutdown interrupted.");
+        } finally {
+            executor.shutdown();
+            try {
+                if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    System.out.println("Forcing shutdown...");
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executor.shutdownNow();
+            }
         }
     }
     
@@ -53,11 +69,11 @@ public class DungeonManager {
     }
 
 
-    public static DungeonManager getInstance(int n) {
+    public static DungeonManager getInstance(int n, int numParties) {
         if (instance == null) { // First check (no locking)
             synchronized (DungeonManager.class) {
                 if (instance == null) { // Second check (inside lock)
-                    instance = new DungeonManager(n);
+                    instance = new DungeonManager(n, numParties);
                 }
             }
         }
@@ -71,23 +87,30 @@ public class DungeonManager {
         return instance;
     }
     
-    public synchronized Integer getAvailableDungeon() {
-        return this.availableDungeons.poll();
+    public Integer getAvailableDungeon() {
+        return availableDungeons.poll();
     }
 
     public Dungeon getDungeon(int id) {
         return dungeons.get(id);
     }
 
-    public synchronized void releaseDungeon(int dungeonId) {
-        this.availableDungeons.offer(dungeonId);
+    public void releaseDungeon(int dungeonId) {
+        availableDungeons.offer(dungeonId);
+            System.out.println("Dungeon released: " + dungeonId);
+
+        synchronized (latchLock) {    // Lock only on latch operations
+            latch.countDown();
+            System.out.println("Latch counted down");
+            System.out.println("Parties remaining: " + latch.getCount());
+        }
     }
 
     public void printAvailableDungeons() {
         System.out.println("AVAILABLE DUNGEONS: " + this.availableDungeons);
     }
 
-    public synchronized void printStatus() {
+    public void printStatus() {
         System.out.println("Current status of all available instances:");
         for (int i = 1; i <= this.numOfDungeons; i++) {
             Dungeon dungeon = dungeons.get(i);
@@ -113,7 +136,9 @@ public class DungeonManager {
         System.out.println("Number of parties: " + partiesServed);
     }
 
-    public synchronized boolean getStatus() {
-        return this.partiesLeft;
+    public boolean getStatus() {
+        synchronized (statusLock) {
+            return this.partiesLeft;
+        }
     }
 }

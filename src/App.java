@@ -152,9 +152,10 @@ public class App {
             printConfiguration(n, tankPlayers, healerPlayers, dpsPlayers, t1, t2);
 
             int numParties = getNumOfParties(tankPlayers, healerPlayers, dpsPlayers);
+            System.out.println(numParties);
             int numPartiesLeft = numParties;
 
-            DungeonManager manager = DungeonManager.getInstance(n);
+            DungeonManager manager = DungeonManager.getInstance(n, numParties);
             // Start dungeon instances
             for (int i = 1; i <= n; i++) {
                 manager.startDungeonInstance(i, t1, t2);
