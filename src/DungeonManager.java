@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class DungeonManager {
@@ -19,8 +20,8 @@ public class DungeonManager {
     private final ExecutorService executor;
     private boolean partiesLeft = true;
     private final CountDownLatch latch;
-    private final Object statusLock = new Object();   // Separate lock for dungeons
-    private final Object latchLock = new Object();     // Separate lock for latch operations
+    private final Semaphore dungeonSemaphore;
+    private final Semaphore printSemaphore = new Semaphore(1);
 
 
     private DungeonManager(int n, int numParties) {
@@ -36,15 +37,15 @@ public class DungeonManager {
     
         this.executor = Executors.newFixedThreadPool(n);
         this.latch = new CountDownLatch(numParties);
+        this.dungeonSemaphore = new Semaphore(n);
     }
 
     public void shutdown() {
-        this.partiesLeft = false;
-
         try {
-            System.out.println("Waiting for all dungeon parties to finish...");
+            // System.out.println("Waiting for all dungeon parties to finish...");
             latch.await();  // Wait until all parties finish
-            System.out.println("All parties cleared dungeons. Shutting down.");
+            this.partiesLeft = false;
+            System.out.println("All parties cleared dungeons.");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             System.out.println("Shutdown interrupted.");
@@ -88,7 +89,16 @@ public class DungeonManager {
     }
     
     public Integer getAvailableDungeon() {
-        return availableDungeons.poll();
+        try {
+            // System.out.println("Try to acquire sem.");
+            dungeonSemaphore.acquire(); // Blocks until a dungeon is available
+            // System.out.println("Got sem.");
+            return availableDungeons.poll();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("Thread interrupted.");
+            return null;
+        }
     }
 
     public Dungeon getDungeon(int id) {
@@ -96,49 +106,67 @@ public class DungeonManager {
     }
 
     public void releaseDungeon(int dungeonId) {
-        availableDungeons.offer(dungeonId);
+        try {
+            availableDungeons.offer(dungeonId);
             System.out.println("Dungeon released: " + dungeonId);
-
-        synchronized (latchLock) {    // Lock only on latch operations
+            this.printStatus();
+        } finally {
+            dungeonSemaphore.release();
             latch.countDown();
-            System.out.println("Latch counted down");
-            System.out.println("Parties remaining: " + latch.getCount());
         }
     }
 
     public void printAvailableDungeons() {
-        System.out.println("AVAILABLE DUNGEONS: " + this.availableDungeons);
+        System.out.println("[AVAIL DUNGEONS] " + this.availableDungeons);
+        System.out.println("Available dungeons count: " + this.availableDungeons.size());
     }
 
     public void printStatus() {
-        System.out.println("Current status of all available instances:");
-        for (int i = 1; i <= this.numOfDungeons; i++) {
-            Dungeon dungeon = dungeons.get(i);
-            synchronized (dungeon) {
+        try {
+            printSemaphore.acquire();
+            System.out.println("\n============================");
+            System.out.println("Current status of all available instances:");
+            for (int i = 1; i <= this.numOfDungeons; i++) {
+                Dungeon dungeon = dungeons.get(i);
                 boolean isActive = dungeon.isActive();
-                String status = "empty";
-                if (isActive) {
-                    status = "active";
-                }
+                String status = isActive ? "active" : "empty";
                 System.out.println("Dungeon " + i + " = " + status);
             }
+            System.out.println("============================\n");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("Status printing was interrupted.");
+        } finally {
+            printSemaphore.release();
+        }
+    }
+    
+    public void printEnter(int dungeonId) {
+        try {
+            printSemaphore.acquire();
+            System.out.println("Party will enter Dungeon " + dungeonId);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("Status printing was interrupted.");
+        } finally {
+            printSemaphore.release();
         }
     }
 
     public void printSummary() {
         int partiesServed = 0;
-        System.out.println("Dungeon Instance Summary:");
+        System.out.println("\n============================");
+        System.out.println("Dungeon Instances Summary:");
         for (int i = 1; i <= this.numOfDungeons; i++) {
             Dungeon dungeon = dungeons.get(i);
             System.out.println("Dungeon " + i + " served " + dungeon.getPartiesServed() + " parties and total time is " + dungeon.getTotalTimeServed() + " seconds");
             partiesServed += dungeon.getPartiesServed();
         }
-        System.out.println("Number of parties: " + partiesServed);
+        System.out.println("\nTotal # of parties: " + partiesServed);
+        System.out.println("============================");
     }
 
-    public boolean getStatus() {
-        synchronized (statusLock) {
-            return this.partiesLeft;
-        }
+    public synchronized boolean getStatus() {
+        return this.partiesLeft;
     }
 }

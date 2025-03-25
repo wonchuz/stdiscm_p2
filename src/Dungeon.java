@@ -11,6 +11,7 @@ public class Dungeon {
     private boolean isActive = false;
     private int partiesServed = 0;
     private int totalTimeServed = 0;
+    private final Random random = new Random();
 
     public Dungeon(int id) {
         this.id = id;
@@ -19,18 +20,12 @@ public class Dungeon {
 
     public void startInstance(int t1, int t2) {
         DungeonManager manager = DungeonManager.getInstance();
-        boolean enter = false;
-        while (manager.getStatus()) {
+        boolean status = manager.getStatus();
+        while (status) {
             // if there is a party, execute
-            synchronized (this) {
-                if (this.isActive) {
-                    enter = true;
-                }
-            }
-            if (enter) {
-                // manager.printStatus();
+            if (this.isActive()) {
                 // System.out.println("[ENTERED] Dungeon " + this.id);
-                int time = new Random().nextInt(t2 - t1 + 1) + t1;
+                int time = this.random.nextInt(t2 - t1 + 1) + t1;
 
                 // run time
                 try {
@@ -41,20 +36,17 @@ public class Dungeon {
                     System.out.println("Dungeon " + id + " interrupted.");
                     return;
                 }
-                synchronized (this) {
-                    // remove party from dungeon
-                    this.isActive = false;
-                    enter = false;
-                    this.partiesServed++;
-                    this.totalTimeServed += time;
-                    manager.releaseDungeon(this.id);
-                    // manager.printStatus();
-                }
+                // remove party from dungeon
+                this.setIsActive(false);
+                this.partiesServed++;
+                this.totalTimeServed += time;
+                manager.releaseDungeon(this.id);
                 // System.out.println("[EXIT] Dungeon " + this.id);
             } else {
                 // System.out.println("[WAIT] Dungeon " + this.id);
             }
             // no party, keep waiting
+            status = manager.getStatus();
         }
     }
 
@@ -62,19 +54,23 @@ public class Dungeon {
         return this.id;
     }
 
-    public synchronized void startParty() {
+    public void startParty() {
         this.isActive = true;
     }
 
     public synchronized boolean isActive() {
         return this.isActive;
     }
+
+    public synchronized void setIsActive(boolean val) {
+        this.isActive = val;
+    }
     
-    public synchronized int getPartiesServed() {
+    public int getPartiesServed() {
         return this.partiesServed;
     }
     
-    public synchronized int getTotalTimeServed() {
+    public int getTotalTimeServed() {
         return this.totalTimeServed;
     }
     

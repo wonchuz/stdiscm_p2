@@ -79,6 +79,12 @@ public class App {
             }
         }
 
+        // t1 should not be greater than 15
+        if (inputs[4] > 15) {
+            System.err.println("Invalid value for t1: " + inputs[4] + " (must be <= 15)");
+            isValid = false;
+        }
+
         // t2 should not be less than t1 or greater than 15
         if (inputs[5] < inputs[4] || inputs[5] > 15) {
             System.err.println("Invalid value for t2: " + inputs[5] + " (must be >= t1 and <= 15)");
@@ -111,7 +117,7 @@ public class App {
                 try {
                     inputs[i] = Integer.parseInt(parts[1].trim());
                 } catch (NumberFormatException e) {
-                    System.err.println("Invalid format in config file: " + line);
+                    System.err.println("Invalid format in config file (not an integer or out of data type bounds): " + line);
                     return null;
                 }
             }
@@ -152,7 +158,6 @@ public class App {
             printConfiguration(n, tankPlayers, healerPlayers, dpsPlayers, t1, t2);
 
             int numParties = getNumOfParties(tankPlayers, healerPlayers, dpsPlayers);
-            System.out.println(numParties);
             int numPartiesLeft = numParties;
 
             DungeonManager manager = DungeonManager.getInstance(n, numParties);
@@ -161,29 +166,16 @@ public class App {
                 manager.startDungeonInstance(i, t1, t2);
             }
 
-            manager.printAvailableDungeons();
+            // manager.printAvailableDungeons();
             while (numPartiesLeft > 0) {
-                // keep waiting while available dungeon queue is not empty
-                Integer dungeonId = null;
-                boolean exit = false;
-                while (!exit) {
-                    // Loop continues while dungeonId is null
-                    dungeonId = manager.getAvailableDungeon();
-                    // System.out.println(dungeonId);
-                    if (dungeonId != null) {
-                        exit = true;
-                    }
-                }
+                manager.printStatus();
+                int dungeonId = manager.getAvailableDungeon();
+                Dungeon dungeon = manager.getDungeon(dungeonId);
 
-                // Make sure its not null
-                if (dungeonId != null) {
-                    Dungeon dungeon = manager.getDungeon(dungeonId);
-
-                    // System.out.println("Start pARTY");
-                    dungeon.startParty();
-                    // manager.printStatus();
-                    numPartiesLeft--;
-                }
+                manager.printEnter(dungeonId);
+                dungeon.startParty();
+                manager.printStatus();
+                numPartiesLeft--;
             }
             manager.shutdown();
             manager.printSummary();
@@ -192,6 +184,9 @@ public class App {
             System.out.println(tankPlayers - numParties + " Tanks");
             System.out.println(healerPlayers - numParties + " Healers");
             System.out.println(dpsPlayers - (numParties * 3) + " DPS");
+
+            
+            System.out.println("\nThank you! :3");
         }
     }
 }
