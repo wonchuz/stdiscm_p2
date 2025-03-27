@@ -4,14 +4,12 @@
  */
 package src;
 
-import java.util.Random;
-
 public class Dungeon {
     private final int id;
     private boolean isActive = false;
     private int partiesServed = 0;
     private int totalTimeServed = 0;
-    private final Random random = new Random();
+    private int partyTime = 0;
 
     public Dungeon(int id) {
         this.id = id;
@@ -25,7 +23,7 @@ public class Dungeon {
             // if there is a party, execute
             if (this.isActive()) {
                 // System.out.println("[ENTERED] Dungeon " + this.id);
-                int time = this.random.nextInt(t2 - t1 + 1) + t1;
+                int time = this.partyTime;
 
                 // run time
                 try {
@@ -40,6 +38,7 @@ public class Dungeon {
                 this.setIsActive(false);
                 this.partiesServed++;
                 this.totalTimeServed += time;
+                this.partyTime = 0;
                 manager.releaseDungeon(this.id);
                 // System.out.println("[EXIT] Dungeon " + this.id);
             } else {
@@ -54,8 +53,9 @@ public class Dungeon {
         return this.id;
     }
 
-    public void startParty() {
+    public void startParty(int partyTime) {
         this.isActive = true;
+        this.partyTime = partyTime;
     }
 
     public synchronized boolean isActive() {

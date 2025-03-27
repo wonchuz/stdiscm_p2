@@ -142,6 +142,19 @@ public class App {
         return Math.min(t, Math.min(h, dps));
     }
 
+    public static int getPriority(int t1, int t2, int time) {
+        int diffToT1 = Math.abs(time - t1);
+        int diffToT2 = Math.abs(time - t2);
+    
+        // If the time is closer to t1, assign priority 1; otherwise, assign priority 2
+        if (diffToT1 < diffToT2) {
+            return 1; // Closer to t1
+        } else {
+            return 2; // Closer to t2
+        }
+    }
+    
+
     public static void main(String[] args) {
         printHeader();
         int[] inputs = getInputs();
@@ -159,6 +172,25 @@ public class App {
 
             int numParties = getNumOfParties(tankPlayers, healerPlayers, dpsPlayers);
             int numPartiesLeft = numParties;
+            int[] partyTimes = new int[numParties];
+
+            Random random = new Random();
+            for (int i = 0; i < numParties; i++) {
+                partyTimes[i] = random.nextInt(t2 - t1 + 1) + t1;
+            }
+
+            List<Integer> p1Parties = new ArrayList<>();
+            List<Integer> p2Parties = new ArrayList<>();
+
+            // Assign parties to priority lists
+            for (int time : partyTimes) {
+                int priority = getPriority(t1, t2, time);
+                if (priority == 1) {
+                    p1Parties.add(time);
+                } else {
+                    p2Parties.add(time);
+                }
+            }
 
             DungeonManager manager = DungeonManager.getInstance(n, numParties);
             // Start dungeon instances
@@ -166,16 +198,36 @@ public class App {
                 manager.startDungeonInstance(i, t1, t2);
             }
 
+            int currentPriority = 1; // Start with priority 1
             // manager.printAvailableDungeons();
             while (numPartiesLeft > 0) {
                 manager.printStatus();
+                // get party priority
+                int partyTime;
+
+                if (currentPriority == 1 && !p1Parties.isEmpty()) {
+                    partyTime = p1Parties.remove(0); // Get first priority 1 party and remove it
+                } else if (!p2Parties.isEmpty()) {
+                    partyTime = p2Parties.remove(0); // Get first priority 2 party and remove it
+                } else if (!p1Parties.isEmpty()) {
+                    partyTime = p1Parties.remove(0);
+                } else {
+                    break; // No more parties
+                }
                 int dungeonId = manager.getAvailableDungeon();
                 Dungeon dungeon = manager.getDungeon(dungeonId);
 
                 manager.printEnter(dungeonId);
-                dungeon.startParty();
+                dungeon.startParty(partyTime);
                 manager.printStatus();
                 numPartiesLeft--;
+                
+                // Alternate priorities
+                if (currentPriority == 1 && !p2Parties.isEmpty()) {
+                    currentPriority = 2;
+                } else if (currentPriority == 2 && !p1Parties.isEmpty()) {
+                    currentPriority = 1;
+                }
             }
             manager.shutdown();
             manager.printSummary();
@@ -184,7 +236,6 @@ public class App {
             System.out.println(tankPlayers - numParties + " Tanks");
             System.out.println(healerPlayers - numParties + " Healers");
             System.out.println(dpsPlayers - (numParties * 3) + " DPS");
-
             
             System.out.println("\nThank you! :3");
         }
