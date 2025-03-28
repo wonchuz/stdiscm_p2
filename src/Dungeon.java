@@ -21,7 +21,7 @@ public class Dungeon {
         boolean status = manager.getStatus();
         while (status) {
             // if there is a party, execute
-            if (this.isActive()) {
+            if (this.isActive() && this.partyTime != 0) {
                 // System.out.println("[ENTERED] Dungeon " + this.id);
                 int time = this.partyTime;
 
