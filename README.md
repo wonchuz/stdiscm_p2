@@ -6,7 +6,7 @@
 
 This program manages the LFG (Looking for Group) dungeon queuing of an MMORPG. The number of maximum dungeon instances, number of tank players, healer players, and dps players in the queue, minimum time and maximum time before an instance is finished can be configured via `config.txt`.
 
-## Github repository:
+## Github repository: https://github.com/wonchuz/stdiscm_p2
 
 ## **How to use:**
 
