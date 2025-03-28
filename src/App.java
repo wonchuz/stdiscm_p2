@@ -204,16 +204,11 @@ public class App {
 
                 if (currentPriority == 1 && !p1Parties.isEmpty()) {
                     partyTime = p1Parties.remove(0); // Get first priority 1 party and remove it
-                    
-                    System.out.println("P1 parties first");
                 } else if (!p2Parties.isEmpty()) {
-                    System.out.println("P2 parties");
                     partyTime = p2Parties.remove(0); // Get first priority 2 party and remove it
                 } else if (!p1Parties.isEmpty()) {
-                    System.out.println("P1 parties");
                     partyTime = p1Parties.remove(0);
                 } else {
-                    System.out.println("No more parties");
                     break; // No more parties
                 }
                 int dungeonId = manager.getAvailableDungeon();
